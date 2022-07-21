@@ -1,11 +1,8 @@
-import argparse
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
-from torch_skeleton import PytorchRegression
+from flextorch import PytorchRegression
 from seedpy import fixedseed
 
 from sklearn.datasets import make_regression

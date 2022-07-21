@@ -16,12 +16,7 @@ from sklearn.metrics import accuracy_score, f1_score
 from os import mkdir, listdir
 from os.path import isfile, exists, join
 from operator import le, ge
-from utils import deep_dict_update, to_tensor, split_data, to_numpy
-
-optim_mapping = {
-    "sgd": optim.SGD,
-    "adam": optim.Adam,
-}
+from .utils import deep_dict_update, to_tensor, split_data, to_numpy
 
 def accuracy(predictions, labels):
     if len(predictions.shape) != 1:
@@ -52,6 +47,12 @@ class PyTorchBaseClass:
             "accuracy": accuracy,
             "mse": F.mse_loss,
         }
+
+        self.optim_mapping = {
+            "sgd": optim.SGD,
+            "adam": optim.Adam,
+        }
+
         self.config, _ = deep_dict_update(self.config, config)
         self.check_config()
 
@@ -101,7 +102,7 @@ class PyTorchBaseClass:
         train_loader = self.convert_to_loader(train_data, shuffle=False)
         val_loader = self.convert_to_loader(val_data, shuffle=True)
 
-        optimizer = optim_mapping[self.config["optimizer"]](self.model.parameters(), **self.config["optimizer_parameters"])
+        optimizer = self.optim_mapping[self.config["optimizer"]](self.model.parameters(), **self.config["optimizer_parameters"])
 
         train_log = []
 

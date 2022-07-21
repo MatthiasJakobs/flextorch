@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
 from seedpy import fixedseed
 
-from torch_skeleton import PytorchClassifier
+from flextorch import PytorchClassifier
 
 class Net(nn.Module):
     def __init__(self, num_features, num_classes):
