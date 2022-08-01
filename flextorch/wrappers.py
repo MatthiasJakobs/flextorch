@@ -43,6 +43,7 @@ class PyTorchBaseClass:
         }
         self.metric_mapping = {
             "nll": F.nll_loss,
+            "bce": F.binary_cross_entropy,
             "ce": F.cross_entropy,
             "accuracy": accuracy,
             "mse": F.mse_loss,
