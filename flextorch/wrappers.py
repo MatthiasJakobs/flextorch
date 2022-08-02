@@ -222,23 +222,40 @@ class PyTorchBaseClass:
     def check_config(self):
         pass
 
+    def prepare_y(self, y, metric_name):
+        y = y.squeeze()
+
+        if metric_name in ['mse', 'bce', 'ce']:
+            return y
+
+        classification = self.config['classification']
+
+        if classification:
+            if len(y.shape) == 2:
+                # Softmax
+                return y.argmax(axis=1)
+            elif len(y.shape) == 1:
+                # Sigmoid
+                return y.round()
+
+        return y
+
     def calculate_and_propagate_loss(self, data, train_metrics):
         X, y = data
         X = X.to(self.device)
         y = y.to(self.device)
+
+        loss_name = self.config['loss_fn']['name']
+        loss_fn = self.metric_mapping[loss_name]
+
         output = self.model(X)
+        output = self.prepare_y(output, loss_name)
+        y = self.prepare_y(y, loss_name)
 
-        for metric in self.config["loss_fn"]:
-            loss_name = metric["name"]
-            loss_fn = self.metric_mapping[loss_name]
+        loss = loss_fn(output, y)
+        loss.backward()
 
-            if self.config["classification"] == False:
-                output = output.squeeze()
-
-            loss = loss_fn(output, y)
-            loss.backward()
-
-            train_metrics = self.log_metric(train_metrics, f"train_{loss_name}", loss.item())
+        train_metrics = self.log_metric(train_metrics, f"train_{loss_name}", loss.item())
 
         return train_metrics
 
@@ -255,24 +272,24 @@ class PyTorchBaseClass:
 
         with torch.no_grad():
             for data, target in data_loader:
-                output = self.model(data)
-                if self.config["classification"] == False:
-                    output = output.squeeze()
+                raw_output = self.model(data)
                 ys.extend(target)
-                predictions.append(output)
+                predictions.append(raw_output)
 
-        ys = torch.from_numpy(np.array(ys))
-        predictions = torch.Tensor(torch.cat(predictions, axis=0))
+        ys = torch.vstack(ys).squeeze()
+        predictions = torch.vstack(predictions).squeeze()
 
         val_metrics = {}
         for metric in self.config["evaluation_metrics"]:
             metric_name = metric["name"]
             metric_fn = self.metric_mapping[metric_name]
 
+            _predictions = self.prepare_y(predictions, metric_name)
+
             try:
-                val_metrics[f"{prefix}_{metric_name}"] = metric_fn(predictions, ys).item()
+                val_metrics[f"{prefix}_{metric_name}"] = metric_fn(_predictions, ys).item()
             except Exception:
-                val_metrics[f"{prefix}_{metric_name}"] = metric_fn(predictions, ys)
+                val_metrics[f"{prefix}_{metric_name}"] = metric_fn(_predictions, ys)
 
         return val_metrics
 
@@ -328,7 +345,7 @@ class PytorchRegression(PyTorchBaseClass):
     def __init__(self, model, config):
         default_config = {
             "classification": False,
-            "loss_fn": [{"name": "mse"}],
+            "loss_fn": {"name": "mse"},
             "evaluation_metrics": [{"name": "mse"}],
             "early_stopping": {
                 "metric": "mse",
@@ -344,7 +361,7 @@ class PytorchClassifier(PyTorchBaseClass):
     def __init__(self, model, config):
         default_config = {
             "classification": True,
-            "loss_fn": [{"name": "ce"}],
+            "loss_fn": {"name": "ce"},
             "evaluation_metrics": [{"name": "ce"}, {"name": "accuracy"}],
             "early_stopping": {
                 "metric": "accuracy",
@@ -365,12 +382,13 @@ class PytorchClassifier(PyTorchBaseClass):
         
         with torch.no_grad():
             self.model.eval()
-            pred = self.model(X).cpu().numpy()
+            pred = self.model(X).cpu()
 
         if proba:
-            return pred
+            return pred.numpy()
         else:
-            return np.argmax(pred, axis=-1)
+            pred = self.prepare_y(pred, 'acc').numpy()
+            return pred
 
     def predict_proba(self, X):
         return self.predict(X, proba=True)
@@ -380,6 +398,3 @@ class PytorchClassifier(PyTorchBaseClass):
         y = to_numpy(y)
 
         return self.score_fn(y_pred, y)
-
-
-

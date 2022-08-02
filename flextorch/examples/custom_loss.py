@@ -62,8 +62,7 @@ class PytorchClassifierExtraLoss(PytorchClassifier):
         explanation = GradientXInput(output, X, y)
         expl_loss = ((explanation * e)**2).sum()
 
-        loss_obj = self.config['loss_fn'][0]
-        loss_name = loss_obj['name']
+        loss_name = self.config['loss_fn']['name']
         loss_fn = self.metric_mapping[loss_name]
         classification_loss = loss_fn(output.squeeze(), y)
 
@@ -126,9 +125,7 @@ if __name__ == '__main__':
         'optimizer_parameters': {
             'lr': 2e-3
         },
-        'loss_fn': [
-            {'name': 'ce'}
-        ], 
+        'loss_fn': {'name': 'ce'}, 
         'evaluation_metrics': [
             {'name': 'ce'}, 
             {'name': 'accuracy'}
@@ -146,9 +143,7 @@ if __name__ == '__main__':
         'optimizer_parameters': {
             'lr': 2e-3
         },
-        'loss_fn': [
-            {'name': 'ce'}
-        ], 
+        'loss_fn': {'name': 'ce'}, 
         'evaluation_metrics': [
             {'name': 'ce'}, 
             {'name': 'accuracy'}
